@@ -1,6 +1,71 @@
 # 🛸 Operação Ufology — Documentação do Projeto
 
+[![Maven CI](https://github.com/MariiMariis/ufology-project/actions/workflows/gradle-ci.yml/badge.svg)](https://github.com/MariiMariis/ufology-project/actions/workflows/gradle-ci.yml)
+
 Infraestrutura Kubernetes para a divisão **Ufology Investigation Unit**.
+
+---
+
+## O Papel do Git no Ciclo DevOps e na Entrega Contínua
+
+O **Git** é a base para qualquer pipeline DevOps moderno. Ele atua como o **sistema de controle de versão distribuído** que permite rastrear todas as mudanças no código-fonte de forma precisa e auditável.
+
+No contexto de **Integração Contínua (CI)** e **Entrega Contínua (CD)**, o Git desempenha os seguintes papéis fundamentais:
+
+- **Controle de versão**: Cada commit registra o estado exato do código, permitindo reverter falhas, comparar versões e manter um histórico completo de mudanças.
+- **Rastreamento de mudanças**: Através do `git log`, `git diff` e `git blame`, é possível auditar quem fez o quê, quando e por quê.
+- **Gatilho de automação**: Eventos do Git (push, pull request, tags) disparam automaticamente pipelines de CI/CD via GitHub Actions, eliminando processos manuais.
+- **Colaboração segura**: Através de branches e pull requests, equipes podem trabalhar em paralelo sem conflitos, com revisão de código antes de integrar ao código principal.
+
+O Git não é apenas uma ferramenta de versionamento — é o **elo central** que conecta desenvolvimento, testes automatizados e deploy, garantindo que cada mudança passe por validação antes de chegar à produção.
+
+---
+
+## Importância de Branches e Tags em CI/CD
+
+### Branches
+
+As **branches** permitem o desenvolvimento isolado de funcionalidades sem impactar o código principal. No fluxo de CI/CD:
+
+- **`main`**: Branch de produção — código estável e pronto para deploy. Pushes nesta branch disparam pipelines de build e deploy.
+- **`ci/setup`**: Branch dedicada para configuração da infraestrutura de CI/CD, isolando mudanças até estarem prontas.
+- **Feature branches** (ex: `test-pr`): Branches temporárias para desenvolver funcionalidades, que são integradas via Pull Request com revisão e testes automáticos.
+
+### Tags
+
+As **tags** marcam pontos específicos no histórico do repositório, funcionando como "snapshots" imutáveis:
+
+- **Versionamento semântico** (ex: `v1.0.0`): Identifica releases oficiais com número de versão.
+- **Rastreabilidade**: Permite saber exatamente qual versão do código está em cada ambiente (staging, produção).
+- **Automação de releases**: Tags podem disparar workflows específicos para empacotamento e publicação de artefatos.
+
+Branches e tags juntos formam a estrutura que permite **integração contínua** (merge frequente de código testado) e **entrega contínua** (deploy automatizado de versões validadas).
+
+---
+
+## Workflows do GitHub Actions no Processo de CI/CD
+
+Os **workflows** são arquivos YAML que definem pipelines automatizados no GitHub Actions. Eles são o mecanismo que transforma eventos do repositório em ações automatizadas.
+
+### Estrutura de um Workflow
+
+- **Events (`on`)**: Definem quando o workflow é acionado (push, pull_request, tags, manual).
+- **Jobs**: Unidades de trabalho que rodam em um runner (máquina virtual). Podem ser executados em paralelo ou em sequência com `needs`.
+- **Steps**: Passos individuais dentro de um job — podem executar comandos shell ou usar actions reutilizáveis.
+
+### Workflows neste Projeto
+
+| Workflow | Evento | Função |
+|----------|--------|--------|
+| `hello.yml` | push | Validação básica — exibe "Hello CI/CD" |
+| `tests.yml` | pull_request | Executa testes em PRs antes do merge |
+| `gradle-ci.yml` | push (main) | Build Maven + upload do artefato JAR |
+| `env-demo.yml` | push | Demonstra uso de variáveis de ambiente |
+| `secret-demo.yml` | push | Demonstra uso seguro de secrets |
+| `run-monitor.yml` | push | Monitoramento com variáveis multi-nível, GITHUB_TOKEN e diagnósticos |
+| `deploy.yml` | push (main) | Pipeline completo: testes → validação → deploy com aprovação manual |
+
+Os workflows garantem que todo código passe por **validação automatizada** antes de ser integrado ou implantado, reduzindo erros humanos e acelerando o ciclo de entregas.
 
 ---
 

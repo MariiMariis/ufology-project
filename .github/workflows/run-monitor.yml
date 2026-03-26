@@ -1,0 +1,105 @@
+name: Run Monitor
+
+on:
+  push:
+  workflow_dispatch:
+
+env:
+  APP_NAME: UfoTracker
+  WORKFLOW_ENV: production
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    env:
+      JOB_REGION: us-east-1
+      DEPLOY_ENV: ${{ vars.DEPLOY_ENV || 'staging' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Show all variable levels
+        env:
+          STEP_TIMESTAMP: ${{ github.event.head_commit.timestamp }}
+        run: |
+          echo "=== Variáveis em 3 Níveis ==="
+          echo "Workflow-level: APP_NAME=$APP_NAME"
+          echo "Workflow-level: WORKFLOW_ENV=$WORKFLOW_ENV"
+          echo "Job-level: JOB_REGION=$JOB_REGION"
+          echo "Job-level (vars): DEPLOY_ENV=$DEPLOY_ENV"
+          echo "Step-level: STEP_TIMESTAMP=$STEP_TIMESTAMP"
+
+      - name: Use repository variables (vars context)
+        run: |
+          echo "DEPLOY_ENV from vars: ${{ vars.DEPLOY_ENV }}"
+          echo "PROD_DOMAIN from vars: ${{ vars.PROD_DOMAIN }}"
+
+      - name: Check API Key secret
+        env:
+          HAS_API_KEY: ${{ secrets.API_KEY != '' }}
+        run: |
+          if [ "$HAS_API_KEY" = "true" ]; then
+            echo "API_KEY esta configurado de forma segura"
+          else
+            echo "::warning::API_KEY nao esta configurado no repositorio"
+          fi
+
+      - name: List recent workflow runs (GITHUB_TOKEN)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Consultando runs recentes via API do GitHub..."
+          curl -s -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/actions/runs?per_page=5" \
+            | jq '.workflow_runs[] | {id, name: .name, status, conclusion, created_at}'
+
+      - name: Workflow annotations
+        run: |
+          echo "::warning::Este workflow esta em modo de monitoramento"
+          echo "::error::Exemplo de mensagem de erro para demonstracao"
+          echo "::notice::Pipeline executado com sucesso no ambiente $WORKFLOW_ENV"
+
+      - name: Generate job summary
+        run: |
+          echo "## 📊 Run Monitor - Resumo da Execução" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Item | Valor |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **App** | $APP_NAME |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Environment** | $WORKFLOW_ENV |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Region** | $JOB_REGION |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Deploy Env (vars)** | $DEPLOY_ENV |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Branch** | ${{ github.ref_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Triggered by** | ${{ github.actor }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Monitoramento concluído com sucesso!" >> $GITHUB_STEP_SUMMARY
+
+  diagnostics:
+    runs-on: ubuntu-latest
+    needs: monitor
+    if: failure()
+    steps:
+      - name: Diagnose failure
+        run: |
+          echo "::error::O job 'monitor' falhou! Iniciando diagnóstico automatizado..."
+          echo ""
+          echo "=== DIAGNÓSTICO AUTOMATIZADO ==="
+          echo "1. Verifique se os secrets estão configurados (Settings > Secrets)"
+          echo "2. Verifique se as variables estão configuradas (Settings > Variables)"
+          echo "3. Verifique a conectividade com a API do GitHub"
+          echo "4. Revise os logs do step que falhou acima"
+          echo ""
+          echo "::warning::Sugestão: Execute o workflow novamente com debug habilitado (ACTIONS_STEP_DEBUG=true)"
+
+      - name: Failure summary
+        run: |
+          echo "## Falha Detectada - Diagnóstico" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "O workflow falhou. Possíveis causas:" >> $GITHUB_STEP_SUMMARY
+          echo "- Secrets não configurados" >> $GITHUB_STEP_SUMMARY
+          echo "- Variables do repositório ausentes" >> $GITHUB_STEP_SUMMARY
+          echo "- Problemas de permissão do GITHUB_TOKEN" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo " **Dica**: Habilite \`ACTIONS_STEP_DEBUG=true\` nos secrets para logs detalhados." >> $GITHUB_STEP_SUMMARY

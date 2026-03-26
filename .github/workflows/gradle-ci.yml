@@ -23,3 +23,10 @@ jobs:
           cd devops2026-ufoTracker
           chmod +x mvnw
           ./mvnw clean package -DskipTests
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ufotracker-jar
+          path: devops2026-ufoTracker/target/*.jar
+          retention-days: 7
