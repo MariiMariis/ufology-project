@@ -1,0 +1,180 @@
+# Namespace: ufology
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ufology
+
+---
+# Deployment: PostgreSQL (ufodb)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ufodb
+  namespace: ufology
+  labels:
+    app: ufodb
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ufodb
+  template:
+    metadata:
+      labels:
+        app: ufodb
+    spec:
+      containers:
+        - name: ufodb
+          image: leogloriainfnet/ufodb:1.0-win
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_USER
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              value: "devops2025!"
+            - name: POSTGRES_DB
+              value: "ufology"
+
+---
+
+# Service: ufodb (ClusterIP - internal only)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ufodb
+  namespace: ufology
+  labels:
+    app: ufodb
+spec:
+  type: ClusterIP
+  selector:
+    app: ufodb
+  ports:
+    - port: 5432
+      targetPort: 5432
+      protocol: TCP
+
+---
+# Deployment: Redis Cache (ufo-cache)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ufo-cache
+  namespace: ufology
+  labels:
+    app: ufo-cache
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ufo-cache
+  template:
+    metadata:
+      labels:
+        app: ufo-cache
+    spec:
+      containers:
+        - name: ufo-cache
+          image: redis:alpine
+          ports:
+            - containerPort: 6379
+
+---
+# Service: ufo-cache (ClusterIP - internal only)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ufo-cache
+  namespace: ufology
+  labels:
+    app: ufo-cache
+spec:
+  type: ClusterIP
+  selector:
+    app: ufo-cache
+  ports:
+    - port: 6379
+      targetPort: 6379
+      protocol: TCP
+
+---
+# ConfigMap: app-config
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: ufology
+data:
+  DB_NAME: ufology
+
+---
+# Secret: db-secret
+apiVersion: v1
+kind: Secret
+metadata:
+  name: db-secret
+  namespace: ufology
+type: Opaque
+data:
+  DB_PASSWORD: ZGV2b3BzMjAyNSE=
+
+---
+# Deployment: UfoTracker Application
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ufotracker
+  namespace: ufology
+  labels:
+    app: ufotracker
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: ufotracker
+  template:
+    metadata:
+      labels:
+        app: ufotracker
+    spec:
+      containers:
+        - name: ufotracker
+          image: mariimariis/ufotracker:1.0
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: DB_NAME
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://ufodb:5432/$(DB_NAME)"
+            - name: POSTGRES_USERNAME
+              value: "postgres"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: DB_PASSWORD
+            - name: SPRING_DATA_REDIS_HOST
+              value: "ufo-cache"
+
+---
+# Service: ufotracker (ClusterIP)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ufotracker
+  namespace: ufology
+  labels:
+    app: ufotracker
+spec:
+  type: ClusterIP
+  selector:
+    app: ufotracker
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
