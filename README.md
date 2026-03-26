@@ -181,3 +181,5 @@ kubectl port-forward -n ufology svc/ufotracker 8080:8080
 | UfoTracker (`ufotracker`) | Deployment + Service | 2 | 8080 |
 | Configuração (`app-config`) | ConfigMap | — | — |
 | Credenciais (`db-secret`) | Secret | — | — |
+
+Essa documentação foi criada para atender as exigências do Assessment 
